@@ -1,0 +1,423 @@
+---
+title: "Test Allianz Data Scientist Junior"
+author: "Yuanxi Liu"
+date: "2018/6/14"
+output: html_document
+---
+
+##1. PREPARATION ##
+#### Set working directory
+```{r}
+Sys.setlocale("LC_ALL", 'fr_Fr')
+setwd("~/Desktop/allianz/data")
+```
+
+## 2. IMPORT DES DONNEES ##
+#### 2.1 caracteristiques 2005-2016
+###### Lire tous les 'caracteristiques*.csv' files
+
+```{r}
+list_file_caracteristiques<-list.files(pattern=glob2rx("caracteristiques*.csv"))
+list_file_caracteristiques
+```
+
+```{r}
+first_ten_lines <- read.csv(list_file_caracteristiques[10], nrows = 10)
+
+```
+###### Lire les 10 premiers lignes des données de l'annee 2014
+###### On trouve qu'un bug de 'Num_Acc', car gd nombre (integer).
+###### Les accents français ne sont pas bien affichés.
+###### Maximum integer pour R: Machine$integer.max = 2147483647
+###### Num_Acc, ex '201400000001' > max
+###### Il est suffit de définir la classe de 'Num_Acc'(id) comme un caractère au lieu d'integer.
+###### On observe que tous les accents ne sont pas correctement affichés.
+
+```{r}
+library(DT)
+colnames(first_ten_lines) = paste('<span style="color:red">', colnames(first_ten_lines), '</span>', sep = "")
+datatable(first_ten_lines, escape = FALSE)
+```
+
+###### Test le codage de R
+###### Le codage européen est ISO_8859-1.
+```{r}
+codepages <- iconvlist() 
+```
+
+```{r}
+first_ten_lines_caracteristiques <- read.csv(list_file_caracteristiques[10], nrows = 10, fileEncoding = 'ISO_8859-1')
+first_ten_lines_caracteristiques
+```
+
+```{r}
+colnames(first_ten_lines_caracteristiques) = paste('<span style="color:red">', colnames(first_ten_lines_caracteristiques), '</span>', sep = "")
+datatable(first_ten_lines_caracteristiques, escape = FALSE)
+```
+
+###### L'adresse est correctement affichée.
+###### Selon la Description_des_bases_de_donnees_ONISR_-Annees_2005_a_2016,
+###### Définir la classe de chaque variable (integer, caractere ou facteur).
+
+###### Ouvrir la liste de 'caracteristiques*.csv',
+###### Le séparateur de '2009' est tab, les autres sont comma.
+###### Test caracteristiques*.csv, on trouve les erreurs.   
+###### caracteristiques_2005-2008
+
+
+##### caracteristiques_2005-2008
+```{r}
+data_caracteristiques_part1 <- do.call(rbind, lapply(list_file_caracteristiques[c(1,2,3,4)], function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="integer"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0")))))
+```
+
+##### caracteristiques_2009
+```{r}
+# Erreur: '-' n'est pas un integer.
+```
+##### caracteristiques_2010-2016
+```{r}
+# Erreur: '61285E7' n'est pas un integer pour longitude.
+```
+
+##### Solution:
+##### On considère long comme caractère, transformer long 'as.integer', obtenir NA pour cette observation.
+##### Boucle d'import
+```{r}
+data_caracteristiques_part1 <- do.call(rbind, lapply(list_file_caracteristiques[c(1,2,3,4)], function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="character"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0")))))
+data_caracteristiques_part2 <- read.csv(list_file_caracteristiques[5], colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="character"), fileEncoding = "ISO_8859-1", sep = "\t", na.strings=c("NA","NaN", "", "0")) # Windows-1252
+data_caracteristiques_part3 <- do.call(rbind, lapply(list_file_caracteristiques[c(6,7,8,9,10,11,12)], function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="character"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0")))))
+data_caracteristiques <- rbind(data_caracteristiques_part1,data_caracteristiques_part2,data_caracteristiques_part3)
+data_caracteristiques$long <- as.integer(data_caracteristiques$long)
+```
+
+```{r}
+colnames(data_caracteristiques) = paste('<span style="color:red">', colnames(data_caracteristiques), '</span>', sep = "")
+datatable(head(data_caracteristiques, 50), escape = FALSE)
+```
+
+#### 2.2 Lieux 2005-2016
+###### De même façon pour la suite:
+
+###### Lire tous les  lieux*.csv fichiers
+```{r}
+list_file_lieux<-list.files(pattern=glob2rx("lieux*.csv"))
+list_file_lieux
+```
+
+###### Les 10 premiers lignes:
+```{r}
+first_ten_lines_lieux <- read.csv(list_file_lieux[10], nrows = 10)
+colnames(first_ten_lines_lieux) = paste('<span style="color:red">', colnames(first_ten_lines_lieux), '</span>', sep = "")
+datatable(first_ten_lines_lieux, escape = FALSE)
+```
+
+###### Facteur = 0, => valeur manquante (NA).
+###### Boucle d'import
+```{r}
+data_lieux <- do.call(rbind, lapply(list_file_lieux, function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", catr="factor", voie="character", v1="integer", v2="factor", circ="factor", nbv="integer", vosp="factor", prof="factor", plan="factor", surf="factor", infra="factor", situ="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0", 0)))))
+```
+
+```{r}
+colnames(data_lieux) = paste('<span style="color:red">', colnames(data_lieux), '</span>', sep = "")
+datatable(head(data_lieux, 50), escape = FALSE)
+```
+
+
+#### 2.3 Vehicules 2005-2016
+###### Lire tous les  vehicules*.csv fichiers
+```{r}
+list_file_vehicules<-list.files(pattern=glob2rx("vehicules*.csv"))
+list_file_vehicules
+```
+
+###### Les 10 premiers lignes:
+```{r}
+first_10_lines_vehicules <- read.csv(list_file_vehicules[10], nrows = 10)
+first_10_lines_vehicules
+colnames(first_10_lines_vehicules) = paste('<span style="color:red">', colnames(first_10_lines_vehicules), '</span>', sep = "")
+datatable(first_10_lines_vehicules, escape = FALSE)
+```
+
+###### Boucle d'import
+```{r}
+data_vehicules <- do.call(rbind, lapply(list_file_vehicules, function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", senc="factor", catv="factor", obs="factor", obsm="factor", choc="factor", manv="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "")))))
+
+```
+
+```{r}
+colnames(data_vehicules) = paste('<span style="color:red">', colnames(data_vehicules), '</span>', sep = "")
+datatable(head(data_vehicules, 50), escape = FALSE)
+```
+
+
+#### 2.4 Usagers 2005-2016
+###### Lire tous les  usagers*.csv fichiers
+```{r}
+list_file_usagers<-list.files(pattern=glob2rx("usagers*.csv"))
+list_file_usagers
+```
+
+###### Les 10 premiers lignes:
+```{r}
+first_10_lines_usagers <- read.csv(list_file_usagers[10], nrows = 10)
+first_10_lines_usagers
+colnames(first_10_lines_usagers) = paste('<span style="color:red">', colnames(first_10_lines_usagers), '</span>', sep = "")
+datatable(first_10_lines_usagers, escape = FALSE)
+```
+
+###### Boucle d'import
+```{r}
+data_usagers <- do.call(rbind, lapply(list_file_usagers, function(x) cbind(read.csv(x, colClasses = c(Num_Acc="character", place="factor", catu="factor", grav="factor", sexe="factor", trajet="factor", secu="factor", locp="factor", actp="factor", etatp="factor", num_veh="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "")))))
+```
+
+```{r}
+colnames(data_usagers) = paste('<span style="color:red">', colnames(data_usagers), '</span>', sep = "")
+datatable(head(data_usagers, 50), escape = FALSE)
+# ??? Num_veh ??? identifiant duplicate??? => facteur
+```
+
+
+## 3. EXPLORATION DES DONNEES ##
+##### Pour la suite on utilisera uniquement la dernière année 2016
+```{r}
+data_caracteristiques_2016 <- read.csv(list_file_caracteristiques[12], colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="integer"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0"))
+
+colnames(data_caracteristiques_2016) = paste('<span style="color:red">', colnames(data_caracteristiques_2016), '</span>', sep = "")
+datatable(head(data_caracteristiques_2016, 50), escape = FALSE)
+```
+
+```{r}
+data_lieux_2016 <- read.csv(list_file_lieux[12], colClasses = c(Num_Acc="character", catr="factor", voie="character", v1="integer", v2="factor", circ="factor", nbv="integer", vosp="factor", prof="factor", plan="factor", surf="factor", infra="factor", situ="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0", 0))
+
+colnames(data_lieux_2016) = paste('<span style="color:red">', colnames(data_lieux_2016), '</span>', sep = "")
+datatable(head(data_lieux_2016, 50), escape = FALSE)
+```
+
+```{r}
+data_vehicules_2016 <- read.csv(list_file_vehicules[12], colClasses = c(Num_Acc="character", senc="factor", catv="factor", obs="factor", obsm="factor", choc="factor", manv="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", ""))
+
+colnames(data_vehicules_2016) = paste('<span style="color:red">', colnames(data_vehicules_2016), '</span>', sep = "")
+datatable(head(data_vehicules_2016, 50), escape = FALSE)
+```
+
+```{r}
+data_usagers_2016 <- read.csv(list_file_usagers[12], colClasses = c(Num_Acc="character", place="factor", catu="factor", grav="factor", sexe="factor", trajet="factor", secu="factor", locp="factor", actp="factor", etatp="factor", num_veh="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", ""))
+
+colnames(data_usagers_2016) = paste('<span style="color:red">', colnames(data_usagers_2016), '</span>', sep = "")
+datatable(head(data_usagers_2016, 50), escape = FALSE)
+```
+###### Type de variables
+```{r}
+library(data.table)
+library(rowr) # use 'cbind.fill'
+```
+
+#### 3.1 Structure des données
+```{r}
+mysummary <- function(x){
+  x_dt <- as.data.table(x) # Transformer x vers data.table
+  the_column_name = colnames(x)
+  
+  result_data_table <- data.table() # résultat initial
+  for(i in 1:ncol(x)){
+    print(i)
+    c = class(x[,i]) # type de colonne i
+    column_name_i = the_column_name[i] # nom de colonne i
+    print(c)
+    
+    # non analyse pour identifiant
+    if ( c == "character" ) {
+      result_column_i_beta = data.table(the_column_name_i=c("class"), N = c(c))
+      
+      if ( i == 1) {
+        result_data_table = result_column_i_beta
+      } else {
+        result_data_table = cbind.fill(result_data_table, result_column_i_beta, fill = NA)
+      }
+      
+      setnames(result_data_table, old = "the_column_name_i", new = column_name_i)
+      column_name_i = paste(column_name_i, "Summary", sep = "_")
+      setnames(result_data_table, old = "N", new = column_name_i)
+    }
+    if ( c == "integer" ) {
+      column_i <- x[,i]
+      mean_of_i <- mean(column_i[column_i>0] , na.rm = TRUE) # moyenne
+      median_of_i <- median(column_i[column_i>0] , na.rm = TRUE) # médiane 
+      min_of_i <- min(column_i[column_i>0] , na.rm = TRUE) # min
+      max_of_i <- max(column_i[column_i>0] , na.rm = TRUE) # max
+      na_of_i <- x_dt[, sum(is.na(.SD)),  .SDcols = eval(i)] # valeurs manquantes
+      
+      result_column_i_beta = data.table(the_column_name_i=c("class","mean","median","min","max","NA"), N = c(c,mean_of_i,median_of_i,min_of_i,max_of_i,na_of_i))
+      
+      setnames(result_column_i_beta, old = "the_column_name_i", new = column_name_i)
+      column_name_i = paste(column_name_i, "Summary", sep = "_")
+      setnames(result_column_i_beta, old = "N", new = column_name_i)
+      
+      if ( i == 1) {
+        result_data_table = result_column_i_beta
+      } else {
+        result_data_table = cbind.fill(result_data_table, result_column_i_beta, fill = NA)
+      }
+      
+    }
+    if ( c == "factor" ) {
+      result_column_i_alpha = data.table(the_column_name_i=c("class"), N = c(c))
+      result_column_i_beta <- x_dt[, .(.N), keyby = eval(the_column_name[i])] # Nombre de facteur (aggregate).
+      
+      setnames(result_column_i_alpha, old = "the_column_name_i", new = column_name_i)
+      
+      column_name_i = paste(column_name_i, "Summary", sep = "_")
+      setnames(result_column_i_beta, old = "N", new = column_name_i)
+      setnames(result_column_i_alpha, old = "N", new = column_name_i)
+      print(result_column_i_alpha)
+      print(result_column_i_beta)
+      
+      # Combiner result_column_i_alpha et result_column_i_beta 
+      
+      result_column_i_beta <- rbind(result_column_i_alpha, result_column_i_beta)
+      
+      if ( i == 1) {
+        result_data_table = result_column_i_beta
+      } else {
+        result_data_table = cbind.fill(result_data_table, result_column_i_beta, fill = NA)
+      }
+    }
+  }
+  return(result_data_table)
+}
+```
+
+```{r}
+data_caracteristiques_2016 <- read.csv(list_file_caracteristiques[12], colClasses = c(Num_Acc="character", lum="factor", dep="factor", com="factor", agg="factor", int="factor", atm="factor", col="factor", adr="character", gps="factor", lat="integer", long="integer"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0"))
+summary_caracteristiques_2016 <- mysummary(data_caracteristiques_2016)
+colnames(summary_caracteristiques_2016) = paste('<span style="color:red">', colnames(summary_caracteristiques_2016), '</span>', sep = "")
+datatable(summary_caracteristiques_2016, escape = FALSE)
+```
+
+```{r}
+data_lieux_2016 <- read.csv(list_file_lieux[12], colClasses = c(Num_Acc="character", catr="factor", voie="character", v1="integer", v2="factor", circ="factor", nbv="integer", vosp="factor", prof="factor", plan="factor", surf="factor", infra="factor", situ="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", "", "0", 0))
+summary_lieux_2016 <- mysummary(data_lieux_2016)
+colnames(summary_lieux_2016) = paste('<span style="color:red">', colnames(summary_lieux_2016), '</span>', sep = "")
+datatable(summary_lieux_2016, escape = FALSE)
+```
+
+```{r}
+data_vehicules_2016 <- read.csv(list_file_vehicules[12], colClasses = c(Num_Acc="character", senc="factor", catv="factor", obs="factor", obsm="factor", choc="factor", manv="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", ""))
+colnames(data_vehicules_2016) = paste('<span style="color:red">', colnames(data_vehicules_2016), '</span>', sep = "")
+datatable(head(data_vehicules_2016, 50), escape = FALSE)
+```
+
+```{r}
+data_usagers_2016 <- read.csv(list_file_usagers[12], colClasses = c(Num_Acc="character", place="factor", catu="factor", grav="factor", sexe="factor", trajet="factor", secu="factor", locp="factor", actp="factor", etatp="factor", num_veh="factor"), fileEncoding = "ISO_8859-1", na.strings=c("NA","NaN", ""))
+summary_usagers_2016 <- mysummary(data_usagers_2016)
+
+colnames(summary_usagers_2016) = paste('<span style="color:red">', colnames(summary_usagers_2016), '</span>', sep = "")
+datatable(summary_usagers_2016, escape = FALSE)
+```
+
+## 4. Transformation
+#### 4.1 Valeurs abbérantes
+```{r}
+data_caracteristiques_2016$lat[data_caracteristiques_2016$lat == 0] <- NA
+data_caracteristiques_2016$long[data_caracteristiques_2016$long == 0] <- NA
+```
+
+#### 4.2 Variables temporelles
+###### Dates sont représentées par le nb de jours depuis 01/01/1970
+```{r}
+data_caracteristiques_2016$date = as.Date(paste("2016", data_caracteristiques_2016$mois, data_caracteristiques_2016$jour, sep = "-"))
+```
+
+###### mj : mois et jour de l’accident (sans an)
+```{r}
+data_caracteristiques_2016$mj = format(data_caracteristiques_2016$date, format="%m-%d")
+```
+###### hms : heure et minute de l’accident en format POSIX. 
+###### Nb de secondes depuis 00:00:00 elapsed since 00:00:00 Coordinated Universal Time (UTC), Thursday, 1 January 1970.
+###### Dans le résumé, il n'y a pas de NA.
+
+###### Le but est de transformer le temps en format de 06:15
+```{r}
+data_caracteristiques_2016$hms =  format(as.POSIXlt(paste(data_caracteristiques_2016$date, paste(trunc(data_caracteristiques_2016$hrmn/100),(data_caracteristiques_2016$hrmn %% 100),"00", sep=":"), " ") ), '%H:%M')
+```
+###### heure : heure de l’accident en format numérique
+```{r}
+data_caracteristiques_2016$heure = trunc(data_caracteristiques_2016$hrmn/100)
+```
+###### jsem : jour de la semaine
+```{r}
+data_caracteristiques_2016$jsem = weekdays(data_caracteristiques_2016$date)
+```
+
+
+## 5. Visualisation
+```{r}
+library(ggplot2)
+```
+
+#### 5.1 
+##### Méthode 1
+###### Barre empilée
+```{r}
+ggplot(data_lieux_2016, aes(x=factor(0))) + geom_bar(aes(fill=catr), position ="fill") + scale_fill_discrete(name = "Catégorie de route", labels = c("Autoroute","Route Nationale","Route Départementale","Voie Communale","Hors réseau public","Parc de stationnement ouvert à la circulation publique","autre")) + labs(x = "Catégorie de route", y = "pourcentage") + scale_x_discrete(labels = c(""))
+```
+
+###### Anneau (beignet)
+```{r}
+ggplot(data_lieux_2016, aes(x=factor(0))) + geom_bar(aes(fill=catr), position ="fill", width = 0.2) + scale_fill_discrete(name = "Catégorie de route", labels = c("Autoroute","Route Nationale","Route Départementale","Voie Communale","Hors réseau public","Parc de stationnement ouvert à la circulation publique","autre")) + labs(x = "Catégorie de route", y = "pourcentage") + scale_x_discrete(labels = c("")) + theme(legend.position="bottom") + coord_polar(theta = "y")
+```
+###### Camembert
+```{r}
+ggplot(data_lieux_2016, aes(x=factor(0))) + geom_bar(aes(fill=catr), position ="fill", width = 1) + scale_fill_discrete(name = "Catégorie de route", labels = c("Autoroute","Route Nationale","Route Départementale","Voie Communale","Hors réseau public","Parc de stationnement ouvert à la circulation publique","autre")) + labs(x = "Catégorie de route", y = "pourcentage") + scale_x_discrete(labels = c("")) + theme(legend.position="bottom") + coord_polar(theta = "y") 
+```
+##### Méthode 2
+###### Etape 1:  Calcul le percentage de catégorie de route
+```{r}
+lieux_catr_2016_summary <- as.data.table(summary_lieux_2016[2:8,3:4])
+is.data.table(lieux_catr_2016_summary)
+lieux_catr_2016_summary$catr_Summary <- as.integer(as.character(lieux_catr_2016_summary$catr_Summary))
+lieux_catr_2016_summary
+lieux_catr_2016_summary <- lieux_catr_2016_summary[ , percentage := prop.table(`catr_Summary`)]
+lieux_catr_2016_summary
+lieux_catr_2016_summary$catr_names <- c("Autoroute","Route Nationale","Route Départementale","Voie Communale","Hors réseau public","Parc de stationnement ouvert à la circulation publique","autre")
+```
+
+###### Etape 2:  Ordre de pourcentage
+```{r}
+lieux_catr_2016_summary$catr_names = factor(lieux_catr_2016_summary$catr_names, levels = lieux_catr_2016_summary$catr_names[order(lieux_catr_2016_summary$percentage)])
+lieux_barplot <- ggplot(lieux_catr_2016_summary, aes(x="", y=percentage, fill=catr_names)) + geom_bar(width = 1, stat = "identity") + labs(x = "Catégorie de route", y = "pourcentage") + scale_fill_discrete(name = "Catégorie de route")
+```
+
+```{r}
+lieux_pie <- lieux_barplot + coord_polar("y", start = 0)
+lieux_pie + scale_fill_brewer(palette = "Blues") + theme_minimal() + scale_fill_discrete(name = "Catégorie de route")
+```
+
+
+
+#### 5.2
+###### Ajouter les étiquettes:
+###### Le package 'ggforce' a un 'warning'.
+###### Cela fonctionne bien dans RStudio, avec warning message. Mais sur rmarkdown, STOP.
+
+library(ggplot2)
+library(dplyr)
+library(ggforce)
+library(scales)
+library(ggrepel)
+
+lieux_catr_2016_summary$Percentage <- round(lieux_catr_2016_summary$percentage * 100 , 2)
+lieux_catr_2016_summary <- lieux_catr_2016_summary[order(-lieux_catr_2016_summary$Percentage),]
+lieux_catr_2016_summary$label_position <- 100-(cumsum(lieux_catr_2016_summary$Percentage) -lieux_catr_2016_summary$Percentage/2)
+lieux_catr_2016_summary_pie <- ggplot(data=lieux_catr_2016_summary,aes(x=1,y=Percentage,fill=reorder(catr_names,-label_position)))+
+  geom_bar(stat = "identity",color='black')+
+  geom_label_repel(aes(label = percent(Percentage/100),y = label_position), size=3, show.legend = F, nudge_x = 1)+
+  guides(fill = guide_legend(title = "Catégorie de route"))+
+  coord_polar("y",start=0)+ 
+  labs(x='',y='',title='Catégorie de route')+
+  theme(plot.title=element_text(hjust=0.5,face='bold',size=16))+
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        legend.title=element_text(size=12,face='bold'))
+lieux_catr_2016_summary_pie
+
